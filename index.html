@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PK ADM - الطريق السيار</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- الشريط العلوي المدمج -->
+    <header class="top-navbar">
+        <div class="nav-brand">
+            <span id="app-title">🛣️ PK ADM</span>
+            <span id="status-badge" class="status-badge">⏳</span>
+        </div>
+
+         <div class="nav-actions">
+            <button id="excel-panel-btn" class="nav-btn btn-excel" onclick="toggleExcelDrawer()">📊 <span data-i18n="auditBtn">تدقيق Excel</span></button>
+            <button id="gps-btn" class="nav-btn btn-gps" onclick="locateUser()">📍 <span data-i18n="gpsBtn">موقعي (GPS)</span></button>
+            <button id="lang-btn" class="nav-btn btn-lang" onclick="toggleLanguage()">🇫🇷 Français</button>
+            <button id="menu-toggle-btn" class="nav-btn btn-menu" onclick="toggleControlDrawer()">☰ <span data-i18n="toolsBtn">الأدوات</span></button>
+        </div>
+    </header>
+
+    <!-- القائمة المنسدلة القابلة للطي (تظهر عند الضغط على زر الأدوات) -->
+        <!-- القائمة المنسدلة المقسمة إلى أقسام قابلة للطي -->
+    <div id="control-drawer" class="control-drawer collapsed">
+        
+        <!-- القسم 1: إضافة / تعديل محطة (قابل للطي) -->
+        <div class="drawer-section">
+            <button id="station-form-accordion-btn" class="accordion-btn" onclick="toggleAccordion('station-form-content', this)">
+                <span>➕ <span data-i18n="addStationTitle">إضافة / تعديل محطة</span></span>
+                <span class="arrow">▼</span>
+            </button>
+            <div id="station-form-content" class="accordion-content collapsed">
+                <label data-i18n="routeLabel">المسار / البدال:</label>
+                <select id="direction"></select>
+
+                <label data-i18n="pkLabel">النقطة الكيلومترية (PK):</label>
+                <input type="text" id="pk" placeholder="215+620" />
+
+                <label data-i18n="nameLabel">اسم المحطة / المنشأة:</label>
+                <input type="text" id="stationName" placeholder="Ouvrage / Aire..." />
+
+                <button id="save-station-btn" class="action-btn btn-green" onclick="addOrUpdateStation()">+ <span data-i18n="addBtn">إضافة للخريطة</span></button>
+                <button id="cancel-edit-btn" class="action-btn btn-gray" style="display:none;" onclick="cancelStationEdit()">✖ <span data-i18n="cancelBtn">إلغاء التعديل</span></button>
+            </div>
+        </div>
+
+        <!-- القسم 2: أدوات المسار والبيانات (قابل للطي) -->
+        <div class="drawer-section">
+            <button class="accordion-btn" onclick="toggleAccordion('route-tools-content', this)">
+                <span>🛠️ <span data-i18n="routeToolsTitle">أدوات المسار والبيانات</span></span>
+                <span class="arrow">▼</span>
+            </button>
+            <div id="route-tools-content" class="accordion-content collapsed">
+                <button id="edit-route-btn" class="action-btn btn-purple" onclick="toggleEditRoute()">✏️ <span data-i18n="editRouteBtn">تعديل مسار الطريق</span></button>
+                <button class="action-btn btn-yellow" onclick="downloadRouteCoords()">💾 <span data-i18n="downloadCoordsBtn">تحميل إحداثيات المسار</span></button>
+                <button class="action-btn btn-yellow" onclick="exportToCSV()">📥 <span data-i18n="exportCsvBtn">تصدير إلى Excel (CSV)</span></button>
+            </div>
+        </div>
+
+        <!-- القسم 3: المحطات المسجلة (قابل للطي) -->
+        <div class="drawer-section">
+            <button class="accordion-btn" onclick="toggleAccordion('stations-accordion-content', this)">
+                <span>📋 <span data-i18n="savedStationsTitle">المحطات المسجلة</span> (<span id="stations-count">0</span>)</span>
+                <span class="arrow">▼</span>
+            </button>
+            <div id="stations-accordion-content" class="accordion-content collapsed">
+                <div id="stations-list-container"></div>
+                <button class="action-btn btn-red" style="margin-top:8px;" onclick="clearStations()">🗑️ <span data-i18n="clearAllBtn">مسح الكل</span></button>
+            </div>
+        </div>
+                <!-- القسم 4: مسار الدورية وحساب الكيلومترات (قابل للطي) -->
+        <div class="drawer-section">
+            <button class="accordion-btn" style="background:#ebf8ff; border-color:#90cdf4;" onclick="toggleAccordion('patrol-circuit-content', this)">
+                <span>🚓 <span data-i18n="patrolTitle">مسار الدورية وحساب الكيلومترات</span></span>
+                <span class="arrow">▼</span>
+            </button>
+            <div id="patrol-circuit-content" class="accordion-content collapsed">
+                <label data-i18n="selectSegmentAxis">اختر المحور / البدال:</label>
+                <select id="patrol-route-select"></select>
+
+                <div style="display:flex; gap:5px; margin-top:4px;">
+                    <div style="flex:1;">
+                        <label data-i18n="fromPkLabel">من (PK):</label>
+                        <input type="text" id="patrol-start-pk" placeholder="199+000" />
+                    </div>
+                    <div style="flex:1;">
+                        <label data-i18n="toPkLabel">إلى (PK):</label>
+                        <input type="text" id="patrol-end-pk" placeholder="209+100" />
+                    </div>
+                </div>
+
+                <button class="action-btn btn-green" onclick="addPatrolSegment()">+ <span data-i18n="addSegBtn">إضافة مقطع للدورية</span></button>
+
+                <!-- عداد الكيلومترات الإجمالي -->
+                <div class="mileage-box">
+                    <span data-i18n="totalMileageLabel">المسافة الإجمالية للدورية:</span>
+                    <strong id="total-patrol-km" style="font-size:15px; color:#2b6cb0;">0.000 km</strong>
+                </div>
+
+                <!-- قائمة مقاطع الدورية (قابلة للتعديل والحذف عند وقوع حادث) -->
+                <div id="patrol-segments-list" style="margin-top:6px; max-height:140px; overflow-y:auto;"></div>
+
+                <!-- أزرار تحريك سيارة المساعدة -->
+                <div style="display:flex; gap:5px; margin-top:8px;">
+                    <button id="play-car-btn" class="action-btn btn-purple" style="margin:0;" onclick="toggleCarSimulation()">▶️ <span data-i18n="startCarBtn">تحريك السيارة</span></button>
+                    <button class="action-btn btn-gray" style="margin:0; width:auto; padding:0 10px;" onclick="resetCarSimulation()">⏹️</button>
+                </div>
+                <div id="car-live-status" style="font-size:11px; text-align:center; margin-top:5px; color:#2d3748; font-weight:bold;"></div>
+
+                <button class="action-btn btn-yellow" onclick="exportPatrolCSV()">📥 <span data-i18n="exportPatrolBtn">تصدير تقرير الكيلومترات</span></button>
+                <button class="action-btn btn-red" onclick="clearPatrolCircuit()">🗑️ <span data-i18n="clearPatrolBtn">مسح مسار الدورية</span></button>
+            </div>
+        </div>
+
+
+
+
+    </div>
+
+
+     <!-- شريط علوي لعرض النقطة الكيلومترية وأزرار طلب المساعدة (تظهر فقط للواقف داخل الطريق السيار) -->
+    <div id="pk-top-banner" class="info-banner top-banner" style="display: none;">
+        <span id="pk-display-text">PK 000+000</span>
+        <button class="copy-mini-btn" onclick="copyText('pk-display-text')">📋 PK</button>
+        
+        <!-- أزرار إرسال البلاغ (مخفية افتراضياً ولا تظهر إلا للواقف داخل نطاق 200م) -->
+        <a id="sos-sms-btn" href="#" class="sos-btn btn-sms" style="display: none;">📩 SMS</a>
+        <a id="sos-wa-btn" href="#" target="_blank" class="sos-btn btn-wa" style="display: none;">💬 WhatsApp</a>
+    </div>
+
+    <!-- شريط عرض إحداثيات GPS -->
+    <div id="gps-bottom-banner" class="info-banner bottom-banner" style="display: none;">
+        <span id="gps-display-text">00.000000, -00.000000</span>
+        <button class="copy-mini-btn" onclick="copyText('gps-display-text')">📋 GPS</button>
+    </div>
+
+    <!-- لوحة تدقيق ملفات Excel/CSV السفلية (قابلة للطي) -->
+    <div id="excel-drawer" class="excel-drawer collapsed">
+        <div class="excel-header">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleExcelUpload(event)" />
+                <button class="nav-btn btn-green" onclick="document.getElementById('excel-file-input').click()">📂 <span data-i18n="importExcelBtn">استيراد Excel / CSV</span></button>
+                <button class="nav-btn btn-yellow" onclick="exportAuditedExcel()">📥 <span data-i18n="exportExcelBtn">تصدير الملف المدقق</span></button>
+                
+                <!-- أزرار تصفية المركبات -->
+                <div class="filter-pills">
+                    <button class="pill-btn active" onclick="filterExcelRows('ALL', this)">الكل</button>
+                    <button class="pill-btn" onclick="filterExcelRows('M1', this)">M1</button>
+                    <button class="pill-btn" onclick="filterExcelRows('M2', this)">M2</button>
+                    <button class="pill-btn" onclick="filterExcelRows('M3', this)">M3</button>
+                    <button class="pill-btn" onclick="filterExcelRows('M4', this)">M4</button>
+                    <button class="pill-btn" onclick="filterExcelRows('M5', this)">M5</button>
+                    <button class="pill-btn" onclick="filterExcelRows('M6', this)">M6</button>
+                    <button class="pill-btn pill-alert" onclick="filterExcelRows('ANOMALY', this)">⚠️ انحراف / حادث</button>
+                </div>
+            </div>
+            <button class="nav-btn btn-red" style="padding:4px 8px;" onclick="toggleExcelDrawer()">✖</button>
+        </div>
+
+        <div id="excel-summary-bar" class="excel-summary-bar">
+            يرجى استيراد ملف Excel (.xlsx) أو CSV لبدء التدقيق ورسم المسارات...
+        </div>
+
+        <div class="excel-table-wrapper">
+            <table id="excel-audit-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Poste</th>
+                        <th>Mobile</th>
+                        <th>Réel</th>
+                        <th>Théorique</th>
+                        <th>Ecart</th>
+                        <th>KM Comp.</th>
+                        <th>Détail de calcul (قابل للتعديل)</th>
+                        <th>Observations</th>
+                        <th>خريطة</th>
+                    </tr>
+                </thead>
+                <tbody id="excel-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+
+
+    <!-- الخريطة تملأ الشاشة بالكامل -->
+    <div id="map"></div>
+
+    <script src="routes.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
