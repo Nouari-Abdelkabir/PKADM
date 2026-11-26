@@ -273,7 +273,7 @@ function initApp() {
             if (closestPoint && minDistKm <= 25) {
                 const targetLatLng = L.latLng(closestPoint.at(1), closestPoint.at(0));
                 // تقريب الخريطة لمجال رؤية يساوي 50 كيلومتراً (50,000 متر) حول النقطة
-                map.fitBounds(targetLatLng.toBounds(30000));
+                map.fitBounds(targetLatLng.toBounds(5000));
                 return; // التوقف هنا لترك المستخدم يختار ما يريد بعد التقريب
             }
         }
@@ -455,7 +455,7 @@ function inspectRoutePoint(e, routeId) {
     if (e.originalEvent) L.DomEvent.stopPropagation(e);
      // إذا كانت الخريطة بعيدة جداً، نقرّب أولاً لمجال 50 كم حول مكان الضغطة
     if (map.getZoom() < 11 && e.originalEvent) {
-        map.fitBounds(L.latLng(e.latlng.lat, e.latlng.lng).toBounds(50000));
+        map.fitBounds(L.latLng(e.latlng.lat, e.latlng.lng).toBounds(5000));
         return;
     }
     const selected = loadedLines[routeId];
