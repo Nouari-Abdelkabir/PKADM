@@ -410,7 +410,65 @@ function inspectRoutePoint(e, routeId) {
 }
 
 // ضع هنا رقم هاتف مركز المراقبة أو الدورية (بصيغة دولية بدون + للواتساب، وبـ + للـ SMS)
-const CENTER_PHONE_NUMBER = "212600000000"; 
+// 1. جدول توجيه البلاغات حسب النقطة الكيلومترية على المحور الرئيسي A3
+const DISPATCH_ZONES = [
+    {
+        zoneName: "المركز 1 (مقطع PK 34+000 إلى PK 242+200)",
+        minPK: 34.000,
+        maxPK: 242.200,
+        phone: "212667822774" // الرقم الأول بصيغة دولية (2126...)
+    },
+    {
+        zoneName: "المركز 2 (مقطع PK 242+201 إلى PK 450+000)",
+        minPK: 242.201,
+        maxPK: 450.000,
+        phone: "212662053193" // الرقم الثاني بصيغة دولية (2126...)
+    }
+];
+
+// رقم احتياطي في حال كان الموقع خارج النطاقين أعلاه (مثلاً بين PK 0 و PK 34)
+const DEFAULT_CENTER_PHONE = "212618160586";
+
+// دالة ذكية تحدد رقم الهاتف المناسب لموقع المستخدم (حتى لو كان داخل بدال أو Pénétrante)
+function getDispatchPhoneForLocation(lat, lon, closestRouteId) {
+    let referencePK = null;
+    const selected = loadedLines[closestRouteId];
+
+    // إذا كان المستخدم على المحور الرئيسي A3 مباشرة، نأخذ الـ PK الخاص به
+    if (selected && selected.info.name === 'A3') {
+        const snap = turf.nearestPointOnLine(selected.line, turf.point([lon, lat]), { units: 'kilometers' });
+        const dist = snap.properties.location;
+        const len = turf.length(selected.line, { units: 'kilometers' });
+        referencePK = selected.info.isReverse 
+            ? (selected.info.startPK + len - dist) 
+            : (selected.info.startPK + dist);
+    } else {
+        // إذا كان المستخدم داخل بدال (Bretelle) أو Pénétrante:
+        // نسقط موقعه على أقرب مقطع من الطريق السيار A3 لمعرفة موقعه الكيلومتري العام
+        const a3Sections = Object.values(loadedLines).filter(r => r.info.name === 'A3' && !r.info.isReverse);
+        let minSnapDist = Infinity;
+        a3Sections.forEach(function(sec) {
+            const snap = turf.nearestPointOnLine(sec.line, turf.point([lon, lat]), { units: 'kilometers' });
+            if (snap.properties.dist < minSnapDist) {
+                minSnapDist = snap.properties.dist;
+                referencePK = sec.info.startPK + snap.properties.location;
+            }
+        });
+    }
+
+    // مطابقة الـ PK المرجعي مع جدول المراكز
+    if (referencePK !== null) {
+        for (let i = 0; i < DISPATCH_ZONES.length; i++) {
+            const zone = DISPATCH_ZONES.at(i);
+            if (referencePK >= zone.minPK && referencePK <= zone.maxPK) {
+                return zone.phone;
+            }
+        }
+    }
+
+    return DEFAULT_CENTER_PHONE;
+}
+
 
 let gpsWatchId = null;
 let lastGpsPos = null;
@@ -418,7 +476,7 @@ let lastGpsPos = null;
 function hideInspectionBanners() {
     document.getElementById('pk-top-banner').style.display = 'none';
     document.getElementById('gps-bottom-banner').style.display = 'none';
-    
+
     // إخفاء أزرار طلب المساعدة دائماً عند الإغلاق
     document.getElementById('sos-sms-btn').style.display = 'none';
     document.getElementById('sos-wa-btn').style.display = 'none';
@@ -437,6 +495,8 @@ function hideInspectionBanners() {
         const gpsBtn = document.getElementById('gps-btn');
         gpsBtn.classList.remove('active');
         gpsBtn.querySelector('span').innerText = translations[currentLang].gpsBtn;
+        gpsBtn.classList.remove('active', 'waiting-conditions');
+
     }
 }
 
@@ -452,6 +512,9 @@ function locateUser() {
     }
 
     isGpsActive = true;
+    gpsBtn.classList.add('waiting-conditions'); // يصبح رمادياً وغير مستجيب أثناء البحث
+    gpsBtn.querySelector('span').innerText = "⏳ ...";
+
     gpsBtn.classList.add('active');
     gpsBtn.querySelector('span').innerText = translations[currentLang].gpsActiveBtn;
 
@@ -506,6 +569,10 @@ function locateUser() {
 
         if (isStopped && isInsideHighway && isGoodAccuracy && closestRouteId) {
             // تجهيز نص الرسالة الجاهزة
+            gpsBtn.classList.remove('waiting-conditions');
+            gpsBtn.classList.add('active');
+            gpsBtn.querySelector('span').innerText = translations[currentLang].gpsActiveBtn;
+
             const pkInfo = document.getElementById('pk-display-text').innerText;
             const mapsLink = 'https:/' + '/://google.com' + lat.toFixed(6) + ',' + lon.toFixed(6);
             const messageText = "🚨 Demande d'assistance Autoroute:\n" +
@@ -515,12 +582,21 @@ function locateUser() {
 
             const encodedMsg = encodeURIComponent(messageText);
 
-            // تفعيل الروابط وإظهار الأزرار
-            smsBtn.href = "sms:+" + CENTER_PHONE_NUMBER + "?body=" + encodedMsg;
-            waBtn.href = "https:/" + "/wa.me/" + CENTER_PHONE_NUMBER + "?text=" + encodedMsg;
+                        // استخراج رقم الهاتف المناسب تلقائياً حسب موقع المستخدم
+            const targetPhone = getDispatchPhoneForLocation(lat, lon, closestRouteId);
+
+            // تفعيل الروابط بالرقم المناسب وإظهار الأزرار
+            smsBtn.href = "sms:+" + targetPhone + "?body=" + encodedMsg;
+            waBtn.href = "https:/" + "/wa.me/" + targetPhone + "?text=" + encodedMsg;
             
             smsBtn.style.display = 'inline-flex';
             waBtn.style.display = 'inline-flex';
+
+            
+            smsBtn.style.display = 'inline-flex';
+            waBtn.style.display = 'inline-flex';
+
+
         } else {
             // إخفاء الأزرار تماماً إذا كان متحركاً بسرعة أو خارج الطريق السيار أو الإشارة ضعيفة
             smsBtn.style.display = 'none';
@@ -1366,4 +1442,11 @@ const ws = XLSX.utils.json_to_sheet(exportData);
 const wb = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb, ws, "DETAIL_CALCUL_VERIFIE");
 XLSX.writeFile(wb, "Detail_Calcul_Verifie.xlsx");
+}
+
+// تفعيل العمل بدون إنترنت (Offline Mode) - يوضع في آخر سطر في الملف
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./sw.js').catch(function() {});
+    });
 }

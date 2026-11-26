@@ -416,3 +416,108 @@ tr.row-selected { outline: 2px solid #3182ce; font-weight: bold; }
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
+
+
+
+/* =========================================================
+   تخصيص الواجهة للهواتف (أقل من 768 بكسل): زر GPS تحت زر اللغة وبنفس حجمه ولونه
+   ========================================================= */
+@media screen and (max-width: 768px) {
+    /* 1. إخفاء أزرار الإدارة والإكسل والقوائم الجانبية في الهاتف */
+    #excel-panel-btn,
+    #menu-toggle-btn,
+    #control-drawer,
+    #excel-drawer,
+    .nav-brand {
+        display: none !important;
+    }
+
+    /* 2. فك تقييد الشريط العلوي */
+    .top-navbar {
+        position: static;
+        transform: none;
+        background: transparent;
+        box-shadow: none;
+        padding: 0;
+        width: 0;
+        height: 0;
+    }
+
+    /* 3. توحيد الحجم واللون والموقع لزر اللغة وزر GPS فوق بعضهما في الزاوية اليسرى */
+    #lang-btn,
+    #gps-btn {
+        position: fixed;
+        left: 12px;
+        width: 135px; /* عرض موحد أنيق للزرين */
+        padding: 8px 12px;
+        font-size: 13px;
+        font-weight: bold;
+        border-radius: 10px;
+        background-color: #4a5568; /* نفس اللون الرمادي الداكن الأنيق */
+        color: #ffffff;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+        z-index: 1005;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        transform: none;
+        bottom: auto;
+        transition: background-color 0.3s ease;
+    }
+
+    /* زر اللغة في الأعلى */
+    #lang-btn {
+        top: 12px;
+    }
+
+    /* زر موقعي (GPS) تحته مباشرة */
+    #gps-btn {
+        top: 52px;
+    }
+
+    /* حالة زر GPS عندما يكون نشطاً وتتوفر الشروط */
+    #gps-btn.active {
+        background-color: #2b6cb0 !important;
+    }
+
+    /* حالة الزر عندما يكون رمادياً فاتحاً وغير مستجيب (أثناء الحركة أو خارج الطريق) */
+    #gps-btn.waiting-conditions {
+        background-color: #a0aec0 !important;
+        color: #edf2f7 !important;
+        cursor: not-allowed;
+        pointer-events: none;
+        box-shadow: none;
+    }
+
+    /* إزاحة أزرار الزوم الافتراضية لليسار أو الأسفل قليلاً حتى لا تتداخل مع الزرين */
+    .leaflet-top.leaflet-left {
+        top: 95px !important;
+    }
+
+    /* 4. شريط PK في الأعلى وشريط GPS في الأسفل بعرض النص فقط */
+    .top-banner {
+        top: 98px;
+        width: fit-content !important;
+        max-width: 94vw;
+        padding: 6px 12px;
+        font-size: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .bottom-banner {
+        bottom: 22px !important;
+        width: fit-content !important;
+        max-width: 94vw;
+        padding: 6px 12px;
+        font-size: 12px;
+        z-index: 1004;
+    }
+
+    .sos-btn {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+}
+
