@@ -249,7 +249,8 @@ function initApp() {
 
     renderAllRoutes(true);
 
-    savedStations = JSON.parse(localStorage.getItem('myHighwayStations')) || [];
+    const localSt = JSON.parse(localStorage.getItem('myHighwayStations')) || [];
+    savedStations = (typeof defaultStations !== 'undefined' && localSt.length === 0) ? [...defaultStations] : localSt;
     refreshAllStations();
 
     map.on('zoomend', updatePkVisibility);

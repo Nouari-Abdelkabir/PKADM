@@ -567,3 +567,23 @@ const allRoutes = [
 
 
 ];
+
+
+
+
+
+// قائمة باحات الاستراحة والمحطات الدائمة (تظهر تلقائياً لجميع المستخدمين)
+const defaultStations = [
+    {
+        routeId: "main_a3",
+        routeName: "A3 - AC",
+        numericPK: 277.997,
+        formattedPK: "PK 277+977 ",
+        name: "Station de Service Total",
+        logo: "total.png",
+        lat: 31.488226, 
+        lon: -8.656036,
+        logoLat: 31.4882,
+        logoLon: -8.6560
+    }
+];
