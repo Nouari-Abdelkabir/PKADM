@@ -16,8 +16,8 @@
         </div>
 
          <div class="nav-actions">
-            <button id="excel-panel-btn" class="nav-btn btn-excel" onclick="toggleExcelDrawer()">📊 <span data-i18n="auditBtn">تدقيق Excel</span></button>
-            <button id="gps-btn" class="nav-btn btn-gps" onclick="locateUser()">📍 <span data-i18n="gpsBtn">موقعي (GPS)</span></button>
+            <!--<button id="excel-panel-btn" class="nav-btn btn-excel" onclick="toggleExcelDrawer()">📊 <span data-i18n="auditBtn">تدقيق Excel</span></button>-->
+            <button id="gps-btn" class="nav-btn btn-gps" onclick="locateUser()">📍 <span data-i18n="gpsBtn">موقعي</span></button>
             <button id="lang-btn" class="nav-btn btn-lang" onclick="toggleLanguage()">🇫🇷 Français</button>
             <button id="menu-toggle-btn" class="nav-btn btn-menu" onclick="toggleControlDrawer()">☰ <span data-i18n="toolsBtn">الأدوات</span></button>
         </div>
@@ -26,6 +26,12 @@
     <!-- القائمة المنسدلة القابلة للطي (تظهر عند الضغط على زر الأدوات) -->
         <!-- القائمة المنسدلة المقسمة إلى أقسام قابلة للطي -->
     <div id="control-drawer" class="control-drawer collapsed">
+        <!-- زر قفل سريع لتأمين القائمة فوراً -->
+        <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+            <button onclick="lockAdminDrawer()" style="background:#e53e3e; color:white; border:none; border-radius:6px; padding:4px 10px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                🔒 <span data-i18n="lockBtn">قفل الأدوات</span>
+            </button>
+        </div>
         
         <!-- القسم 1: إضافة / تعديل محطة (قابل للطي) -->
         <div class="drawer-section">
@@ -42,6 +48,9 @@
 
                 <label data-i18n="nameLabel">اسم المحطة / المنشأة:</label>
                 <input type="text" id="stationName" placeholder="Ouvrage / Aire..." />
+                <!-- حقل اختيار صورة اللوغو من مجلد image -->
+                <label data-i18n="logoLabel">شعار الباحة (اختياري من مجلد image):</label>
+                <input type="text" id="stationLogo" placeholder="مثلاً: afriquia.png" style="direction:ltr;" />
 
                 <button id="save-station-btn" class="action-btn btn-green" onclick="addOrUpdateStation()">+ <span data-i18n="addBtn">إضافة للخريطة</span></button>
                 <button id="cancel-edit-btn" class="action-btn btn-gray" style="display:none;" onclick="cancelStationEdit()">✖ <span data-i18n="cancelBtn">إلغاء التعديل</span></button>
@@ -193,5 +202,7 @@
 
     <script src="routes.js"></script>
     <script src="script.js"></script>
+    
 </body>
 </html>
+

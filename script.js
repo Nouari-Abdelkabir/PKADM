@@ -25,7 +25,8 @@ const translations = {
         reverseSuffix: " (اتجاه معاكس)",
         popupRoute: "المسار: ",
         popupLoc: "الموقع: ",
-        langToggle: "🇫🇷 Français",
+        langToggle: "🇲🇦 العربية",
+        
         patrolTitle: "مسار الدورية وحساب الكيلومترات",
         selectSegmentAxis: "اختر المحور / البدال:",
         fromPkLabel: "من (PK):",
@@ -35,6 +36,7 @@ const translations = {
         startCarBtn: "تحريك السيارة",
         pauseCarBtn: "إيقاف مؤقت",
         exportPatrolBtn: "تصدير تقرير الكيلومترات",
+        lockBtn: "قفل الأدوات",
         clearPatrolBtn: "مسح مسار الدورية",
 
     },
@@ -60,8 +62,8 @@ const translations = {
         reverseSuffix: " (Sens opposé)",
         popupRoute: "Axe : ",
         popupLoc: "Position : ",
-        langToggle: "🇲🇦 العربية",
-                patrolTitle: "Circuit Patrouille & Kilométrage",
+        langToggle: "🇫🇷 Français",
+        patrolTitle: "Circuit Patrouille & Kilométrage",
         selectSegmentAxis: "Choisir l'axe / bretelle :",
         fromPkLabel: "De (PK) :",
         toPkLabel: "À (PK) :",
@@ -69,6 +71,7 @@ const translations = {
         totalMileageLabel: "Distance totale :",
         startCarBtn: "Lancer le véhicule",
         pauseCarBtn: "Pause",
+        lockBtn: "Verrouiller",
         exportPatrolBtn: "Exporter bilan km",
         clearPatrolBtn: "Vider le circuit",
 
@@ -105,9 +108,53 @@ function toggleLanguage() {
 }
 
 // دوال فتح وطي القوائم
+// كلمة المرور الخاصة بالدخول إلى قائمة الأدوات
+const ADMIN_PASSWORD = "2026";
+
+// =========================================================
+// إعدادات حجم شعارات باحات الاستراحة (Logos) وطول خط الربط
+// =========================================================
+const LOGO_CONFIG = {
+    folder: "image/",       // اسم مجلد الصور
+    zoomSmallSize: 18,      // حجم الصورة عند الزوم البعيد
+    zoomMediumSize: 30,     // حجم الصورة عند الزوم المتوسط
+    zoomLargeSize: 44,      // حجم الصورة عند الزوم القريب
+    lineOffsetKm: 0.25      // <-- غيّر هذا الرقم لتحديد طول الخط (0.25 = 250 متر، 0.15 = 150 متر)
+};
+
+let isAdminUnlocked = false; // يُعاد ضبطه تلقائياً إلى false مع كل تحديث للصفحة (F5)
+
 function toggleControlDrawer() {
-    document.getElementById('control-drawer').classList.toggle('collapsed');
+    const drawer = document.getElementById('control-drawer');
+    const isOpening = drawer.classList.contains('collapsed');
+
+    if (isOpening && !isAdminUnlocked) {
+        const promptMsg = (currentLang === 'ar') 
+            ? "🔒 أدخل كلمة المرور للوصول إلى الأدوات:" 
+            : "🔒 Entrez le mot de passe pour accéder aux outils :";
+            
+        const enteredPass = prompt(promptMsg);
+
+        if (enteredPass !== ADMIN_PASSWORD) {
+            if (enteredPass !== null) {
+                alert(currentLang === 'ar' ? "❌ كلمة المرور غير صحيحة!" : "❌ Mot de passe incorrect !");
+            }
+            return;
+        }
+
+        isAdminUnlocked = true; // فتح الجلسة الحالية فقط
+    }
+
+    drawer.classList.toggle('collapsed');
 }
+// دالة قفل القائمة وتأمينها فوراً بكلمة المرور
+function lockAdminDrawer() {
+    isAdminUnlocked = false;
+    document.getElementById('control-drawer').classList.add('collapsed');
+}
+
+
+
 
 // دالة عامة لفتح وطي أي قسم داخل القائمة
 function toggleAccordion(contentId, btnElement) {
@@ -378,6 +425,10 @@ function updatePkVisibility() {
         if (!map.hasLayer(minorPkLayer)) map.addLayer(minorPkLayer);
     } else {
         if (map.hasLayer(minorPkLayer)) map.removeLayer(minorPkLayer);
+    }
+     // تحديث حجم شعارات المحطات مع تغيير الزوم
+    if (savedStations && savedStations.length > 0) {
+        refreshAllStations();
     }
 
     // ضبط حجم الخط حسب الزوم
@@ -722,6 +773,7 @@ function addOrUpdateStation() {
     const routeId = document.getElementById('direction').value;
     const rawPkInput = document.getElementById('pk').value;
     const name = document.getElementById('stationName').value.trim();
+    const logoFile = document.getElementById('stationLogo').value.trim();
     const numericPK = parsePkInput(rawPkInput);
 
     if (isNaN(numericPK) || !name) return;
@@ -741,14 +793,30 @@ function addOrUpdateStation() {
     const lon = point.geometry.coordinates.at(0);
     const lat = point.geometry.coordinates.at(1);
 
+    // حساب زاوية الطريق
+    const nextDist = Math.min(maxKm, distanceOnLine + 0.05);
+    const prevDist = Math.max(0, distanceOnLine - 0.05);
+    const pt1 = turf.along(selected.line, prevDist, { units: 'kilometers' });
+    const pt2 = turf.along(selected.line, nextDist, { units: 'kilometers' });
+    const roadBearing = turf.bearing(pt1, pt2);
+
+    // عكس الزاوية في الاتجاه المعاكس (AC) ليخرج الخط للخارج نحو الباحة وليس فوق المسار الثاني
+    const finalAngle = roadBearing - 90;    
+    const sidePoint = turf.destination(point, LOGO_CONFIG.lineOffsetKm, finalAngle, { units: 'kilometers' });
+    const logoLon = sidePoint.geometry.coordinates.at(0);
+    const logoLat = sidePoint.geometry.coordinates.at(1);
+
     const stationObj = { 
         routeId: routeId, 
         routeName: selected.info.name, 
         numericPK: numericPK,
         formattedPK: formatPkDisplay(numericPK),
-        name: name, 
+        name: name,
+        logo: logoFile,
         lat: lat, 
-        lon: lon 
+        lon: lon,
+        logoLat: logoLat,
+        logoLon: logoLon
     };
 
     if (editingStationIndex !== null) {
@@ -763,10 +831,23 @@ function addOrUpdateStation() {
 
     document.getElementById('pk').value = '';
     document.getElementById('stationName').value = '';
+    document.getElementById('stationLogo').value = '';
     map.setView([lat, lon], 15);
 }
 
+
 // رسم المحطات بنوافذ نظيفة (بدون أزرار تعديل وحذف على الخريطة)
+function getLogoSizeForZoom(zoom) {
+    if (zoom < 12) return LOGO_CONFIG.zoomSmallSize;
+    if (zoom <= 14) return LOGO_CONFIG.zoomMediumSize;
+    return LOGO_CONFIG.zoomLargeSize;
+}
+function getLogoSizeForZoom(zoom) {
+    if (zoom < 12) return LOGO_CONFIG.zoomSmallSize;
+    if (zoom <= 14) return LOGO_CONFIG.zoomMediumSize;
+    return LOGO_CONFIG.zoomLargeSize;
+}
+
 function refreshAllStations() {
     stationsLayer.clearLayers();
     const listContainer = document.getElementById('stations-list-container');
@@ -774,14 +855,59 @@ function refreshAllStations() {
     if (listContainer) listContainer.innerHTML = '';
 
     const t = translations[currentLang];
+    const currentSize = map ? getLogoSizeForZoom(map.getZoom()) : LOGO_CONFIG.zoomMediumSize;
 
     savedStations.forEach(function(st, index) {
         const displayPK = st.formattedPK || ('PK ' + st.km);
         const rName = st.routeName || st.direction;
-
         const cleanPopupHtml = '<b>' + st.name + '</b><br>' + t.popupRoute + rName + '<br>' + t.popupLoc + '<b>' + displayPK + '</b>';
-        L.marker([st.lat, st.lon]).addTo(stationsLayer).bindPopup(cleanPopupHtml);
 
+        // إذا كانت المحطة تحتوي على صورة لوغو
+        if (st.logo && st.logo.length > 0) {
+            const targetLat = st.logoLat || (st.lat + 0.001);
+            const targetLon = st.logoLon || (st.lon + 0.001);
+
+            // 1. نقطة ارتكاز صغيرة على مسار الطريق السيار
+            L.circleMarker([st.lat, st.lon], {
+                radius: 4,
+                color: '#1a365d',
+                fillColor: '#ecc94b',
+                fillOpacity: 1,
+                weight: 2
+            }).addTo(stationsLayer);
+
+            // 2. خط الربط (Leader Line) بين النقطة على الطريق وصورة اللوغو
+            L.polyline([[st.lat, st.lon], [targetLat, targetLon]], {
+                color: '#1a365d',
+                weight: 2,
+                dashArray: '4, 4'
+            }).addTo(stationsLayer);
+
+            // 3. أيقونة الشعار (Logo) المتجاوبة مع الزوم
+            const logoIcon = L.divIcon({
+                className: '',
+                html: '<div class="station-logo-wrapper" style="width:' + currentSize + 'px; height:' + currentSize + 'px;">' +
+                      '<img src="' + LOGO_CONFIG.folder + st.logo + '" alt="' + st.name + '" onerror="this.parentElement.innerHTML=\'⛽\'" />' +
+                      '</div>',
+                iconSize: Array(currentSize, currentSize),
+                iconAnchor: Array(currentSize / 2, currentSize / 2)
+            });
+
+            L.marker([targetLat, targetLon], { icon: logoIcon })
+             .addTo(stationsLayer)
+             .bindPopup(cleanPopupHtml)
+             .on('click', function() {
+                 // تقريب الخريطة ليشمل مجال 5 كيلومترات (5000 متر) مع جعل المحطة وسط الشاشة
+                 const stationCenter = L.latLng(st.lat, st.lon);
+                 map.fitBounds(stationCenter.toBounds(3000));
+             });
+
+        } else {
+            // محطة عادية بدون شعار (دبوس افتراضي)
+            L.marker([st.lat, st.lon]).addTo(stationsLayer).bindPopup(cleanPopupHtml);
+        }
+
+        // تحديث القائمة الجانبية
         if (listContainer) {
             const row = document.createElement('div');
             row.className = 'station-item-row';
@@ -792,7 +918,6 @@ function refreshAllStations() {
             infoSpan.onclick = function() { map.setView([st.lat, st.lon], 15); };
 
             const btnGroup = document.createElement('div');
-            
             const editBtn = document.createElement('button');
             editBtn.className = 'mini-icon-btn';
             editBtn.style.background = '#3182ce';
@@ -819,7 +944,6 @@ function startEditStation(index) {
     const st = savedStations[index];
     editingStationIndex = index;
 
-    // فتح قسم "إضافة / تعديل محطة" تلقائياً ليظهر النموذج للمستخدم
     const formContent = document.getElementById('station-form-content');
     const formBtn = document.getElementById('station-form-accordion-btn');
     if (formContent.classList.contains('collapsed')) {
@@ -832,6 +956,7 @@ function startEditStation(index) {
     }
     document.getElementById('pk').value = (st.formattedPK || ('PK ' + st.km)).replace('PK ', '');
     document.getElementById('stationName').value = st.name;
+    document.getElementById('stationLogo').value = st.logo || '';
 
     const saveBtn = document.getElementById('save-station-btn');
     saveBtn.style.backgroundColor = '#dd6b20';
@@ -839,17 +964,18 @@ function startEditStation(index) {
     document.getElementById('cancel-edit-btn').style.display = 'block';
 }
 
-
 function cancelStationEdit() {
     editingStationIndex = null;
     document.getElementById('pk').value = '';
     document.getElementById('stationName').value = '';
+    document.getElementById('stationLogo').value = '';
 
     const saveBtn = document.getElementById('save-station-btn');
     saveBtn.style.backgroundColor = '#38a169';
     saveBtn.querySelector('span').innerText = translations[currentLang].addBtn;
     document.getElementById('cancel-edit-btn').style.display = 'none';
 }
+
 
 function deleteSingleStation(index) {
     savedStations.splice(index, 1);
