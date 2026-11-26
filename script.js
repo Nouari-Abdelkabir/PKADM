@@ -206,9 +206,35 @@ function initApp() {
     refreshAllStations();
 
     map.on('zoomend', updatePkVisibility);
-    map.on('click', function() {
+        map.on('click', function(e) {
+        // إذا كانت الخريطة بعيدة (Zoom أقل من 11)
+        if (map.getZoom() < 11) {
+            let closestPoint = null;
+            let minDistKm = Infinity;
+            const clickedPt = turf.point([e.latlng.lng, e.latlng.lat]);
+
+            // البحث عن أقرب مسار لنقطة ضغط المستخدم
+            Object.values(loadedLines).forEach(function(item) {
+                const snap = turf.nearestPointOnLine(item.line, clickedPt, { units: 'kilometers' });
+                if (snap.properties.dist < minDistKm) {
+                    minDistKm = snap.properties.dist;
+                    closestPoint = snap.geometry.coordinates;
+                }
+            });
+
+            // إذا ضغط المستخدم بالقرب من الطريق السيار (ضمن هامش 25 كم من إصبعه)
+            if (closestPoint && minDistKm <= 25) {
+                const targetLatLng = L.latLng(closestPoint.at(1), closestPoint.at(0));
+                // تقريب الخريطة لمجال رؤية يساوي 50 كيلومتراً (50,000 متر) حول النقطة
+                map.fitBounds(targetLatLng.toBounds(30000));
+                return; // التوقف هنا لترك المستخدم يختار ما يريد بعد التقريب
+            }
+        }
+
+        // في حال كانت الخريطة مقربة مسبقاً وضغط بعيداً عن المسارات، نخفي الأشرطة كالمعتاد
         hideInspectionBanners();
     });
+
     updatePkVisibility();
 }
 
@@ -376,6 +402,11 @@ function updatePkVisibility() {
 // فحص نقطة على الشريطين وعرض الأشرطة العلوية والسفلية
 function inspectRoutePoint(e, routeId) {
     if (e.originalEvent) L.DomEvent.stopPropagation(e);
+     // إذا كانت الخريطة بعيدة جداً، نقرّب أولاً لمجال 50 كم حول مكان الضغطة
+    if (map.getZoom() < 11 && e.originalEvent) {
+        map.fitBounds(L.latLng(e.latlng.lat, e.latlng.lng).toBounds(50000));
+        return;
+    }
     const selected = loadedLines[routeId];
     if (!selected) return;
 
@@ -430,12 +461,13 @@ const DISPATCH_ZONES = [
 const DEFAULT_CENTER_PHONE = "212618160586";
 
 // دالة ذكية تحدد رقم الهاتف المناسب لموقع المستخدم (حتى لو كان داخل بدال أو Pénétrante)
+// دالة مضمونة لتحديد رقم الهاتف حسب موقع المستخدم على الطريق السيار أو البدالات
 function getDispatchPhoneForLocation(lat, lon, closestRouteId) {
     let referencePK = null;
     const selected = loadedLines[closestRouteId];
 
-    // إذا كان المستخدم على المحور الرئيسي A3 مباشرة، نأخذ الـ PK الخاص به
-    if (selected && selected.info.name === 'A3') {
+    // 1. إذا كان المستخدم على المحور الرئيسي A3 مباشرة
+    if (selected && selected.info.name.indexOf('A3') !== -1) {
         const snap = turf.nearestPointOnLine(selected.line, turf.point([lon, lat]), { units: 'kilometers' });
         const dist = snap.properties.location;
         const len = turf.length(selected.line, { units: 'kilometers' });
@@ -443,9 +475,10 @@ function getDispatchPhoneForLocation(lat, lon, closestRouteId) {
             ? (selected.info.startPK + len - dist) 
             : (selected.info.startPK + dist);
     } else {
-        // إذا كان المستخدم داخل بدال (Bretelle) أو Pénétrante:
-        // نسقط موقعه على أقرب مقطع من الطريق السيار A3 لمعرفة موقعه الكيلومتري العام
-        const a3Sections = Object.values(loadedLines).filter(r => r.info.name === 'A3' && !r.info.isReverse);
+        // 2. إذا كان داخل بدال (Echangeur) أو Pénétrante: نجد أقرب نقطة على الطريق السيار A3
+        const a3Sections = Object.values(loadedLines).filter(function(r) {
+            return r.info.name.indexOf('A3') !== -1 && !r.info.isReverse;
+        });
         let minSnapDist = Infinity;
         a3Sections.forEach(function(sec) {
             const snap = turf.nearestPointOnLine(sec.line, turf.point([lon, lat]), { units: 'kilometers' });
@@ -456,10 +489,10 @@ function getDispatchPhoneForLocation(lat, lon, closestRouteId) {
         });
     }
 
-    // مطابقة الـ PK المرجعي مع جدول المراكز
-    if (referencePK !== null) {
+    // 3. مطابقة الرقم الكيلومتري مع جدول المراكز
+    if (referencePK !== null && !isNaN(referencePK)) {
         for (let i = 0; i < DISPATCH_ZONES.length; i++) {
-            const zone = DISPATCH_ZONES.at(i);
+            const zone = DISPATCH_ZONES[i];
             if (referencePK >= zone.minPK && referencePK <= zone.maxPK) {
                 return zone.phone;
             }
@@ -468,6 +501,7 @@ function getDispatchPhoneForLocation(lat, lon, closestRouteId) {
 
     return DEFAULT_CENTER_PHONE;
 }
+
 
 
 let gpsWatchId = null;
@@ -515,9 +549,7 @@ function locateUser() {
     gpsBtn.classList.add('waiting-conditions'); // يصبح رمادياً وغير مستجيب أثناء البحث
     gpsBtn.querySelector('span').innerText = "⏳ ...";
 
-    gpsBtn.classList.add('active');
-    gpsBtn.querySelector('span').innerText = translations[currentLang].gpsActiveBtn;
-
+   
     // مراقبة مستمرة للتحقق من التوقف الفعلي وحساب السرعة بدقة
     gpsWatchId = navigator.geolocation.watchPosition(function(pos) {
         const lat = pos.coords.latitude;
@@ -592,9 +624,7 @@ function locateUser() {
             smsBtn.style.display = 'inline-flex';
             waBtn.style.display = 'inline-flex';
 
-            
-            smsBtn.style.display = 'inline-flex';
-            waBtn.style.display = 'inline-flex';
+           
 
 
         } else {
