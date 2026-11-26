@@ -542,3 +542,10 @@ tr.row-selected { outline: 2px solid #3182ce; font-weight: bold; }
     }
 }
 
+
+/* إزالة الخطين الأسودين (إطار التركيز الافتراضي) عند النقر على المسارات */
+.leaflet-interactive:focus,
+svg path:focus,
+.leaflet-container path:focus {
+    outline: none !important;
+}

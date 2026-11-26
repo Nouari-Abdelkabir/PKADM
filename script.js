@@ -1607,3 +1607,15 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(function() {});
     });
 }
+
+
+// بدلاً من حساب logoLat و logoLon يدوياً، أضف هذا الزر السريع في قائمة الأدوات ليقوم بتحميل ملف stations.js جاهزاً بجميع المحطات والشعارات التي أضفتها على الخريطة
+
+function downloadStationsFile() {
+    const content = "const defaultStations = " + JSON.stringify(savedStations, null, 4) + ";\n";
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "defaultStations.txt";
+    link.click();
+}

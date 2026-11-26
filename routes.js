@@ -575,15 +575,39 @@ const allRoutes = [
 // قائمة باحات الاستراحة والمحطات الدائمة (تظهر تلقائياً لجميع المستخدمين)
 const defaultStations = [
     {
-        routeId: "main_a3",
-        routeName: "A3 - AC",
-        numericPK: 277.997,
-        formattedPK: "PK 277+977 ",
-        name: "Station de Service Total",
-        logo: "total.png",
-        lat: 31.488226, 
-        lon: -8.656036,
-        logoLat: 31.4882,
-        logoLon: -8.6560
+        "routeId": "main_a3",
+        "routeName": "A3 - AC",
+        "numericPK": 278,
+        "formattedPK": "PK 278+000",
+        "name": "Station de Service Total",
+        "logo": "total.png",
+        "lat": 31.48822248535567,
+        "lon": -8.656062786320387,
+        "logoLat": 31.484221489859426,
+        "logoLon": -8.655349708319115
+    },
+    {
+        "routeId": "main_a3_rev",
+        "routeName": "A3 - CA",
+        "numericPK": 227.512,
+        "formattedPK": "PK 227+512",
+        "name": "Station de Service Afriquia",
+        "logo": "afriquia.png",
+        "lat": 31.719660954987056,
+        "lon": -8.233669848815882,
+        "logoLat": 31.72165494500341,
+        "logoLon": -8.234890934953697
+    },
+    {
+        "routeId": "main_a3",
+        "routeName": "A3 - AC",
+        "numericPK": 227.695,
+        "formattedPK": "PK 227+695",
+        "name": "Station de Service Petrom",
+        "logo": "petrom.png",
+        "lat": 31.718823602470724,
+        "lon": -8.235226625219315,
+        "logoLat": 31.716829606682623,
+        "logoLon": -8.23400558940234
     }
 ];
