@@ -54,6 +54,7 @@
 
                 <button id="save-station-btn" class="action-btn btn-green" onclick="addOrUpdateStation()">+ <span data-i18n="addBtn">إضافة للخريطة</span></button>
                 <button id="cancel-edit-btn" class="action-btn btn-gray" style="display:none;" onclick="cancelStationEdit()">✖ <span data-i18n="cancelBtn">إلغاء التعديل</span></button>
+                <button class="action-btn btn-yellow" onclick="downloadStationsFile()">💾 تحميل ملف المحطات (defaultStations)</button>
             </div>
         </div>
 
@@ -134,7 +135,6 @@
      <!-- شريط علوي لعرض النقطة الكيلومترية وأزرار طلب المساعدة (تظهر فقط للواقف داخل الطريق السيار) -->
     <div id="pk-top-banner" class="info-banner top-banner" style="display: none;">
         <span id="pk-display-text">PK 000+000</span>
-        <button class="copy-mini-btn" onclick="copyText('pk-display-text')">📋 PK</button>
         
         <!-- أزرار إرسال البلاغ (مخفية افتراضياً ولا تظهر إلا للواقف داخل نطاق 200م) -->
         <a id="sos-sms-btn" href="#" class="sos-btn btn-sms" style="display: none;">📩 SMS</a>
@@ -144,7 +144,6 @@
     <!-- شريط عرض إحداثيات GPS -->
     <div id="gps-bottom-banner" class="info-banner bottom-banner" style="display: none;">
         <span id="gps-display-text">00.000000, -00.000000</span>
-        <button class="copy-mini-btn" onclick="copyText('gps-display-text')">📋 GPS</button>
     </div>
 
     <!-- لوحة تدقيق ملفات Excel/CSV السفلية (قابلة للطي) -->
